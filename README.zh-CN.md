@@ -30,6 +30,65 @@ Linux `/proc`、`/sys` 接口。
 | 构建 | Go 1.21 或更高 |
 | 运行 | 带 `/proc`、`/sys` 的 Linux；静态链接，不依赖 libc |
 
+## 安装
+
+预编译包通过 GitHub Pages 发布：
+
+| 格式 | 仓库地址 |
+|---|---|
+| RPM（dnf / yum） | <https://yupor5.github.io/dstat/rpm/> |
+| DEB（apt / apt-get） | <https://yupor5.github.io/dstat/deb/> |
+
+包名为 **dstat-go**，安装到 `/usr/bin/dstat-go`，不会覆盖系统自带的
+`/usr/bin/dstat`（麒麟上该文件是 Performance Co-Pilot 的包装脚本），可与发行版
+`dstat` 包共存。支持架构：RPM 为 `x86_64`、`aarch64`、`i686`、`armv7hl`；DEB 为
+`amd64`、`arm64`、`i386`、`armhf`。
+
+### RPM（dnf / yum）
+
+```bash
+sudo curl -fsSL https://yupor5.github.io/dstat/dstat-go.repo -o /etc/yum.repos.d/dstat-go.repo
+sudo dnf install dstat-go          # 老版本系统用 yum install dstat-go
+sudo dnf upgrade dstat-go          # 后续升级
+```
+
+`/etc/yum.repos.d/dstat-go.repo` 内容：
+
+```ini
+[dstat-go]
+name=dstat-go - Go implementation of dstat
+baseurl=https://yupor5.github.io/dstat/rpm/
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+sslverify=1
+```
+
+### DEB（apt / apt-get）
+
+```bash
+echo "deb [trusted=yes] https://yupor5.github.io/dstat/deb stable main" \
+  | sudo tee /etc/apt/sources.list.d/dstat-go.list
+sudo apt-get update
+sudo apt-get install dstat-go
+sudo apt-get install --only-upgrade dstat-go
+```
+
+### 仓库签名
+
+两个仓库目前均为**未签名**：RPM 侧使用 `gpgcheck=0`，APT 侧使用 `[trusted=yes]`，
+因此无需导入公钥。若需要签名元数据，必须向发布流程提供 GPG 私钥；工作流不会自行
+生成或保存任何密钥。
+
+### 直接下载
+
+也可以直接从仓库目录获取 `.deb` / `.rpm` 手动安装：
+
+```bash
+sudo rpm -Uvh dstat-go-1.0.0-1.x86_64.rpm
+sudo dpkg -i dstat-go_1.0.0-1_amd64.deb
+```
+
 ## 构建
 
 ```bash
@@ -58,6 +117,9 @@ GOOS=linux GOARCH=s390x            go build -trimpath -ldflags "-s -w" -o dstat 
 各架构产物：`dstat-<version>-linux-<arch>.tar.gz`，内含二进制、两份 README、`LICENSE` 与 `docs/`。
 
 ## 用法
+
+通过安装包安装后命令名为 `dstat-go`；下文示例为简洁写成 `dstat`
+（`dstat-go -cdn 2` 与 `dstat -cdn 2` 行为完全一致）。
 
 ```
 dstat [-afv] [options..] [delay [count]]

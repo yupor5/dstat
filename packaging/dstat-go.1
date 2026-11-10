@@ -1,0 +1,159 @@
+.TH DSTAT-GO 1 "2026-11-10" "dstat-go 1.0.0" "User Commands"
+.SH NAME
+dstat-go \- versatile resource statistics tool (Go implementation of dstat)
+.SH SYNOPSIS
+.B dstat-go
+[\-afv] [options..] [delay [count]]
+.SH DESCRIPTION
+.B dstat-go
+is a from-scratch Go implementation of
+.BR dstat (1)
+0.8.0.  Options, column order, headers, units, colours, scaling and CSV output
+follow the upstream tool; all data is read from the Linux
+.I /proc
+and
+.I /sys
+filesystems.
+.PP
+The program is a single statically linked binary with no Python interpreter or
+plugin directory dependency.  It is installed as
+.I /usr/bin/dstat-go
+so that it can coexist with the
+.B dstat
+package provided by the distribution (on some distributions that file is a
+Performance Co-Pilot wrapper script).
+.PP
+With no plugin selected the default set
+.B \-cdngy
+(cpu, disk, net, page, sys) is shown once per second.
+.SH OPTIONS
+.TP
+.B \-c, \-\-cpu
+CPU usage: user, system, idle, wait, steal.
+.TP
+.B \-d, \-\-disk
+Disk read/write throughput.
+.TP
+.B \-g, \-\-page
+Paging activity (page in/out).
+.TP
+.B \-i, \-\-int
+Hardware interrupts per second.
+.TP
+.B \-l, \-\-load
+1, 5 and 15 minute load average.
+.TP
+.B \-m, \-\-mem
+Memory usage: used, free, buffers, cache, available.
+.TP
+.B \-n, \-\-net
+Network receive/send throughput.
+.TP
+.B \-p, \-\-proc
+Process counts: runnable, uninterruptible, new.
+.TP
+.B \-r, \-\-io
+Block I/O requests completed.
+.TP
+.B \-s, \-\-swap
+Swap usage and free space.
+.TP
+.B \-t, \-\-time
+Current date and time column.
+.TP
+.B \-T, \-\-epoch
+Seconds since the epoch column.
+.TP
+.B \-y, \-\-sys
+System statistics: interrupts, context switches.
+.TP
+.B \-a, \-\-all
+Same as \-cdngy.
+.TP
+.B \-v, \-\-vmstat
+vmstat-like set: proc, mem, page, disk, sys, cpu.
+.TP
+.B \-f, \-\-full
+Show every device/interface instead of a total column.
+.TP
+.B \-\-bits
+Show rates in bits per second instead of bytes.
+.TP
+.B \-\-float, \-\-integer
+Force floating point or integer output.
+.TP
+.B \-\-noheaders
+Do not repeat column headers on every update.
+.TP
+.B \-\-noupdate
+Do not redraw the header at all after the first block.
+.TP
+.B \-\-bw, \-\-black-on-white
+Colour theme for light-background terminals.
+.TP
+.B \-\-color, \-\-nocolor
+Force colour output on or off.
+.TP
+.B \-o, \-\-output \fIFILE\fR
+Append CSV output to
+.IR FILE
+while keeping the normal screen output.
+.TP
+.B \-\-pidfile \fIFILE\fR
+Write the process id to
+.IR FILE .
+.TP
+.B \-\-list
+List the available internal plugins.
+.TP
+.B \-\-all-plugins
+Enable every internal plugin.
+.TP
+.B \-h, \-\-help
+Show help.
+.TP
+.B \-V, \-\-version
+Show version, platform and terminal information.
+.SH ARGUMENTS
+.TP
+.I delay
+Seconds between updates (default 1).
+.TP
+.I count
+Number of updates to print; the default is unlimited.
+.SH ENVIRONMENT
+.TP
+.B DSTAT_OPTS
+Options prepended to the command line.
+.SH FILES
+.TP
+.I /proc/stat, /proc/meminfo, /proc/net/dev, /proc/diskstats, /proc/vmstat
+Data sources read on every update.
+.TP
+.I /usr/share/doc/dstat-go/docs/dstat-spec.md
+Behaviour specification (options, plugins, formulas, formats).
+.TP
+.I /usr/share/doc/dstat-go/docs/verification-real.md
+Real-hardware verification record against upstream dstat 0.8.0.
+.SH EXAMPLES
+.TP
+.B dstat-go
+Default plugins, one second interval.
+.TP
+.B dstat-go \-cdn 2 5
+CPU, disk and network, every 2 seconds, 5 updates.
+.TP
+.B dstat-go \-o stats.csv 1 10
+Write CSV while displaying the normal output.
+.SH EXIT STATUS
+0 on success, 1 on usage or runtime error.
+.SH SEE ALSO
+.BR dstat (1),
+.BR vmstat (8),
+.BR iostat (1)
+.SH AUTHOR
+yupor5.  Based on dstat by Dag Wieers and contributors (Copyright 2004-2019).
+This is an independent reimplementation, not affiliated with upstream.
+.SH LICENSE
+GNU General Public License version 2.  See
+.I /usr/share/doc/dstat-go/LICENSE.

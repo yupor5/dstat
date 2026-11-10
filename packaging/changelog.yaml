@@ -1,0 +1,14 @@
+- semver: 1.0.1
+  date: 2026-11-10T14:45:00Z
+  packager: yupor5 <yupor5@users.noreply.github.com>
+  changes:
+    - note: Add .deb and .rpm packages built with nfpm for amd64, arm64, i386/386 and armhf/armv7.
+    - note: Publish yum/dnf and apt repositories on the gh-pages branch.
+    - note: Both packages install /usr/bin/dstat-go only and keep the system dstat untouched.
+
+- semver: 1.0.0
+  date: 2026-11-10T06:15:07Z
+  packager: yupor5 <yupor5@users.noreply.github.com>
+  changes:
+    - note: Initial release of the Go port of dstat 0.8.0.
+    - note: 34 internal plugins, upstream-compatible options and output.

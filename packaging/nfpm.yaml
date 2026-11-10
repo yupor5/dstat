@@ -1,0 +1,76 @@
+# nfpm package definition for dstat-go.
+#
+# Environment variables consumed (see packaging/build-packages.sh):
+#   PKG_ARCH     package architecture, already normalised for the target
+#                format (deb: amd64/arm64/i386/armhf, rpm: x86_64/aarch64/i686/armv7hl)
+#   PKG_VERSION  package version without leading "v" (e.g. 1.0.0)
+#
+# The binary is taken from dist/stage/dstat-go, staged there by
+# packaging/build-packages.sh.  nfpm does not expand environment variables
+# inside `contents.src`, so the path must stay literal.
+#
+# The package deliberately installs /usr/bin/dstat-go only.  Distributions
+# ship their own /usr/bin/dstat (on Kylin it is a pcp wrapper script), so
+# overwriting that path is never allowed.
+
+name: dstat-go
+arch: ${PKG_ARCH}
+platform: linux
+version: ${PKG_VERSION}
+release: "1"
+section: utils
+priority: optional
+maintainer: yupor5 <yupor5@users.noreply.github.com>
+vendor: yupor5
+homepage: https://github.com/yupor5/dstat
+license: GPL-2.0
+
+description: |
+  dstat-go is a from-scratch Go implementation of dstat 0.8.0.
+  Command-line options, column order, headers, units, colours and CSV output
+  follow upstream dstat; data comes from /proc and /sys.  The binary is static
+  and has no Python or plugin runtime dependency.
+  .
+  It installs as /usr/bin/dstat-go and is safe to install alongside the
+  dstat package shipped by the distribution.
+
+changelog: packaging/changelog.yaml
+
+contents:
+  - src: dist/stage/dstat-go
+    dst: /usr/bin/dstat-go
+    file_info:
+      mode: 0755
+  - src: packaging/dstat-go.1
+    dst: /usr/share/man/man1/dstat-go.1
+    file_info:
+      mode: 0644
+  - src: README.md
+    dst: /usr/share/doc/dstat-go/README.md
+    file_info:
+      mode: 0644
+  - src: README.zh-CN.md
+    dst: /usr/share/doc/dstat-go/README.zh-CN.md
+    file_info:
+      mode: 0644
+  - src: LICENSE
+    dst: /usr/share/doc/dstat-go/LICENSE
+    file_info:
+      mode: 0644
+  - src: docs/dstat-spec.md
+    dst: /usr/share/doc/dstat-go/docs/dstat-spec.md
+    file_info:
+      mode: 0644
+  - src: docs/verification-real.md
+    dst: /usr/share/doc/dstat-go/docs/verification-real.md
+    file_info:
+      mode: 0644
+
+rpm:
+  summary: Go implementation of dstat, the versatile resource statistics tool
+  group: Applications/System
+  packager: yupor5 <yupor5@users.noreply.github.com>
+
+deb:
+  fields:
+    Bugs: https://github.com/yupor5/dstat/issues

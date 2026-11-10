@@ -33,6 +33,68 @@ directory) that reads the same Linux `/proc` and `/sys` interfaces upstream read
 | Build | Go 1.21 or newer |
 | Run | Linux kernel with `/proc` and `/sys`; statically linked binary, no libc needed |
 
+## Install
+
+Prebuilt packages are published from GitHub Pages:
+
+| Format | Repository URL |
+|---|---|
+| RPM (dnf / yum) | <https://yupor5.github.io/dstat/rpm/> |
+| DEB (apt / apt-get) | <https://yupor5.github.io/dstat/deb/> |
+
+The package is named **dstat-go** and installs `/usr/bin/dstat-go`. It never
+touches `/usr/bin/dstat` (on Kylin that file is a Performance Co-Pilot wrapper
+script), so it can be installed next to the distribution `dstat` package.
+Supported architectures: RPM `x86_64`, `aarch64`, `i686`, `armv7hl`; DEB
+`amd64`, `arm64`, `i386`, `armhf`.
+
+### RPM (dnf / yum)
+
+```bash
+sudo curl -fsSL https://yupor5.github.io/dstat/dstat-go.repo -o /etc/yum.repos.d/dstat-go.repo
+sudo dnf install dstat-go          # yum install dstat-go on older releases
+sudo dnf upgrade dstat-go          # later upgrades
+```
+
+`/etc/yum.repos.d/dstat-go.repo`:
+
+```ini
+[dstat-go]
+name=dstat-go - Go implementation of dstat
+baseurl=https://yupor5.github.io/dstat/rpm/
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+sslverify=1
+```
+
+### DEB (apt / apt-get)
+
+```bash
+echo "deb [trusted=yes] https://yupor5.github.io/dstat/deb stable main" \
+  | sudo tee /etc/apt/sources.list.d/dstat-go.list
+sudo apt-get update
+sudo apt-get install dstat-go
+sudo apt-get install --only-upgrade dstat-go
+```
+
+### Repository signing
+
+Both repositories are currently **unsigned**: the RPM repository uses
+`gpgcheck=0` and the APT source `[trusted=yes]`, so there is no public key to
+import. Signed metadata requires a GPG private key for the release workflow;
+the workflow never generates or stores keys on its own.
+
+### Direct download
+
+`.deb` and `.rpm` files can also be fetched from the repository directories or
+installed by hand:
+
+```bash
+sudo rpm -Uvh dstat-go-1.0.0-1.x86_64.rpm
+sudo dpkg -i dstat-go_1.0.0-1_amd64.deb
+```
+
 ## Build
 
 ```bash
@@ -63,6 +125,9 @@ each `dstat-<version>-linux-<arch>.tar.gz` contains the binary, both READMEs, `L
 and the `docs/` directory.
 
 ## Usage
+
+Installed from a package the command is `dstat-go`; the examples below use `dstat`
+for brevity (`dstat-go -cdn 2` behaves exactly like `dstat -cdn 2`).
 
 ```
 dstat [-afv] [options..] [delay [count]]

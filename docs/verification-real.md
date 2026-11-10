@@ -351,3 +351,106 @@ cat /data/godstat/logs/summary.txt | tail -3
 ```
 
 原始输出全部保留在远端 `/data/godstat/logs/`（`up.*` / `go.*` / `summary.txt`）。
+
+---
+
+## 11. 打包与仓库验证（deb / rpm）
+
+### 11.1 打包产物
+
+`make packages`（或直接调用 `packaging/build-packages.sh`）用 nfpm 交叉构建，产出 4 架构 × 2 格式：
+
+```
+dstat-go-1.0.0-1.x86_64.rpm   dstat-go_1.0.0-1_amd64.deb
+dstat-go-1.0.0-1.aarch64.rpm  dstat-go_1.0.0-1_arm64.deb
+dstat-go-1.0.0-1.i686.rpm     dstat-go_1.0.0-1_i386.deb
+dstat-go-1.0.0-1.armv7hl.rpm  dstat-go_1.0.0-1_armhf.deb
+```
+
+包内文件一致（deb 侧 `dpkg-deb -c`）：
+
+```
+-rwxr-xr-x ./usr/bin/dstat-go
+-rw-r--r-- ./usr/share/man/man1/dstat-go.1
+-rw-r--r-- ./usr/share/doc/dstat-go/{README.md,README.zh-CN.md,LICENSE}
+-rw-r--r-- ./usr/share/doc/dstat-go/docs/{dstat-spec.md,verification-real.md}
+-rw-r--r-- ./usr/share/doc/dstat-go/changelog.Debian.gz
+```
+
+元数据核对（`rpm -qip` / `dpkg-deb -I`）：`Version 1.0.0-1`、`Architecture` 与架构映射一致
+（RPM `x86_64/aarch64/i686/armv7hl`，DEB `amd64/arm64/i386/armhf`）、`License GPL-2.0`、
+`URL/Homepage https://github.com/yupor5/dstat`，changelog 已转换进 rpm 与 `changelog.Debian.gz`。
+
+### 11.2 RPM 仓库（麒麟 V10 SP1 aarch64）
+
+```
+# 服务端
+bash packaging/mkrepo-rpm.sh /data/godstat/repo /data/godstat/pkgs
+createrepo_c --update --quiet /data/godstat/repo/rpm
+python3 -m http.server 8099 --bind 127.0.0.1   # 模拟 gh-pages 的 HTTP 访问
+
+# 客户端
+sed 's#https://yupor5.github.io/dstat/rpm/#http://127.0.0.1:8099/rpm/#' dstat-go.repo \
+  > /etc/yum.repos.d/dstat-go.repo
+dnf -y install dstat-go
+```
+
+结果：
+
+```
+安装: dstat-go  aarch64  1.0.0-1  dstat-go  972 k
+已安装: dstat-go-1.0.0-1.aarch64
+$ which dstat-go            -> /usr/bin/dstat-go
+$ dstat-go 1 2
+--total-cpu-usage-- -dsk/total- -net/total- ---paging-- ---system--
+usr sys idl wai stl| read  writ| recv  send|  in   out | int   csw
+ 24   2  74   0   0|  22M 4059k|   0     0 |  96B 2584B|  49k  132k
+  5   2  92   0   0|  37k 2148k| 277k  300k|   0     0 |  60k  112k
+$ ls -l /usr/bin/dstat      -> /usr/libexec/pcp/bin/pcp-dstat（未被覆盖）
+```
+
+### 11.3 DEB 仓库（WSL1 Ubuntu 22.04 amd64）
+
+```
+bash packaging/mkrepo-deb.sh /tmp/debrepo dist/packages
+# 生成 deb/pool/*.deb、deb/dists/stable/main/binary-{amd64,arm64,i386,armhf}/Packages(.gz)、Release
+
+echo "deb [trusted=yes] file:///tmp/debrepo/deb stable main" \
+  | sudo tee /etc/apt/sources.list.d/dstat-go.list
+sudo apt-get update -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/dstat-go.list \
+  -o Dir::Etc::sourceparts=-
+sudo apt-get install -y dstat-go
+```
+
+结果：
+
+```
+Get:4 file:/tmp/debrepo/deb stable/main amd64 Packages [572 B]
+Get:1 file:/tmp/debrepo/deb stable/main amd64 dstat-go amd64 1.0.0-1 [1068 kB]
+Setting up dstat-go (1.0.0-1) ...
+$ dpkg -l dstat-go           -> ii  dstat-go  1.0.0-1  amd64  ...
+$ dstat-go -c -m -l 1 2
+--total-cpu-usage-- ------memory-usage----- ---load-avg---
+usr sys idl wai stl| used  free  buff  cach| 1m   5m  15m
+  8  10  82   0   0|23.9G 7859M 33.2M  184M|0.52 0.58 0.59
+  7   7  86   0   0|24.2G 7579M 33.2M  184M|0.52 0.58 0.59
+```
+
+结构校验：`dpkg-deb -I` 四个包、`dpkg-deb -c` 文件清单均正常；`dpkg-deb -f` 输出
+`Package/Version/Architecture` 与架构映射一致。
+
+### 11.4 环境性限制（WSL1）
+
+WSL1（内核 4.4.0-19041-Microsoft）没有 `/proc/diskstats`，默认插件集 `-cdngy` 里的磁盘模块
+加载失败，随后在渲染阶段 `format.go:301` 发生 `index out of range` 崩溃；显式选择可用插件
+（如 `-c -m -l`）则正常出数据。真机（麒麟 4.19 aarch64）不受影响。该差异属于 WSL1 的
+`/proc` 覆盖不全，已记录为待修的健壮性问题。
+
+### 11.5 GitHub Pages 仓库
+
+`release.yml` 在 `v*` 标签触发后：`packages` job 产出 deb/rpm 并上传 artifact，
+`repo` job 拉取已有 gh-pages（保留旧版本）→ `createrepo_c` 刷新 RPM 元数据 →
+`dpkg-scanpackages` + `apt-ftparchive` 生成 DEB 索引 → 推送 gh-pages。
+站点：`https://yupor5.github.io/dstat/`（`/rpm/`、`/deb/`、`dstat-go.repo`、`dstat-go.list`）。
+仓库未签名，客户端分别使用 `gpgcheck=0` 与 `[trusted=yes]`。
+

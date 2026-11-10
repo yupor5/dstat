@@ -1,0 +1,3 @@
+# Place this line in /etc/apt/sources.list.d/dstat-go.list
+# The repository is not GPG signed, hence trusted=yes.
+deb [trusted=yes] https://yupor5.github.io/dstat/deb stable main

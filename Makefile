@@ -4,8 +4,9 @@ GO      ?= go
 LDFLAGS := -s -w
 PLATFORMS := linux/amd64 linux/arm64 linux/386 linux/arm linux/ppc64le linux/s390x
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+PKG_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo 0.0.0)
 
-.PHONY: all build build-all package clean vet
+.PHONY: all build build-all package packages clean vet
 
 all: build
 
@@ -38,6 +39,15 @@ package: build-all
 
 vet:
 	$(GO) vet ./...
+
+## packages: .deb and .rpm for the four supported architectures into dist/packages
+packages:
+	@command -v nfpm >/dev/null 2>&1 || { \
+		echo "nfpm not found: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest"; exit 1; }
+	bash packaging/build-packages.sh amd64 "" $(PKG_VERSION) $(DIST)/packages
+	bash packaging/build-packages.sh arm64 "" $(PKG_VERSION) $(DIST)/packages
+	bash packaging/build-packages.sh 386 "" $(PKG_VERSION) $(DIST)/packages
+	bash packaging/build-packages.sh arm 7 $(PKG_VERSION) $(DIST)/packages
 
 clean:
 	rm -rf $(DIST) $(BINARY)

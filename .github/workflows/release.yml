@@ -52,6 +52,41 @@ jobs:
           path: dist/*.tar.gz
           if-no-files-found: error
 
+  packages:
+    name: deb + rpm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install nfpm
+        run: |
+          set -eu
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Build deb and rpm packages
+        run: |
+          set -eu
+          version="${GITHUB_REF_NAME#v}"
+          nfpm --version
+          bash packaging/build-packages.sh amd64 "" "$version" dist/packages
+          bash packaging/build-packages.sh arm64 "" "$version" dist/packages
+          bash packaging/build-packages.sh 386 "" "$version" dist/packages
+          bash packaging/build-packages.sh arm 7 "$version" dist/packages
+          ls -l dist/packages
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dstat-go-packages
+          path: |
+            dist/packages/*.deb
+            dist/packages/*.rpm
+          if-no-files-found: error
+
   release:
     name: create release
     needs: build
@@ -72,3 +107,58 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
             --title "dstat ${GITHUB_REF_NAME}" \
             --generate-notes
+
+  repo:
+    name: publish package repositories
+    needs: packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dstat-go-packages
+          path: dist/packages
+
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y createrepo-c dpkg-dev apt-utils
+
+      - name: Build repositories
+        env:
+          REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          set -eu
+          rm -rf public
+          if git ls-remote --exit-code --heads "$REMOTE" gh-pages >/dev/null 2>&1; then
+            echo "gh-pages exists, keeping previous packages"
+            git clone --depth 1 --branch gh-pages "$REMOTE" public
+          else
+            echo "creating gh-pages"
+            mkdir -p public
+            git -C public init -q
+            git -C public checkout -q -b gh-pages
+          fi
+          bash packaging/mkrepo-rpm.sh public dist/packages
+          bash packaging/mkrepo-deb.sh public dist/packages
+          cp packaging/repo/dstat-go.repo packaging/repo/dstat-go.list \
+             packaging/repo/index.html public/
+          touch public/.nojekyll
+          find public -maxdepth 2 -type f | sort | head -40
+
+      - name: Push gh-pages
+        env:
+          REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          set -eu
+          cd public
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nothing changed"
+          else
+            git commit -m "packages: ${GITHUB_REF_NAME}"
+            git push "$REMOTE" gh-pages
+          fi
