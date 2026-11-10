@@ -1,0 +1,74 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: linux/${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+          - arch: '386'
+          - arch: arm
+            goarm: '7'
+          - arch: ppc64le
+          - arch: s390x
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build and package
+        env:
+          GOOS: linux
+          GOARCH: ${{ matrix.arch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: '0'
+        run: |
+          set -eu
+          version="${GITHUB_REF_NAME#v}"
+          out="dstat-${version}-linux-${{ matrix.arch }}"
+          mkdir -p "dist/${out}"
+          go build -trimpath -ldflags "-s -w" -o "dist/${out}/dstat" .
+          cp README.md README.zh-CN.md LICENSE "dist/${out}/"
+          cp -r docs "dist/${out}/"
+          tar -C dist -czf "dist/${out}.tar.gz" "${out}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dstat-linux-${{ matrix.arch }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: create release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          ls -l dist
+          gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
+            --title "dstat ${GITHUB_REF_NAME}" \
+            --generate-notes

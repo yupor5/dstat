@@ -1,0 +1,16 @@
+# Upstream clone used only as a read-only reference
+_reference/
+
+# Local build artifacts
+/dstat
+/dstat.exe
+/dist/
+*.tar.gz
+*.test
+
+# Editor / OS noise
+.screenshots/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
