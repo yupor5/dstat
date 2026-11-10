@@ -1,0 +1,22 @@
+Package: dstat-go
+Version: 1.0.1-1
+Architecture: armhf
+Bugs: https://github.com/yupor5/dstat/issues
+Maintainer: yupor5 <yupor5@users.noreply.github.com>
+Installed-Size: 2339
+Filename: pool/dstat-go_1.0.1-1_armhf.deb
+Size: 1003872
+MD5sum: 3194696c055fa0ca05ff10cbbb0d7340
+SHA1: c3864ba910e9562d1db43d3e7fe5737740b9af1e
+SHA256: ca97991f96782ec6dba50306664cc3cb469333e2758dae1779f1b058f1bd127a
+Section: utils
+Priority: optional
+Homepage: https://github.com/yupor5/dstat
+Description: dstat-go is a from-scratch Go implementation of dstat 0.8.0.
+ Command-line options, column order, headers, units, colours and CSV output
+ follow upstream dstat; data comes from /proc and /sys.  The binary is static
+ and has no Python or plugin runtime dependency.
+ .
+ It installs as /usr/bin/dstat-go and is safe to install alongside the
+ dstat package shipped by the distribution.
+

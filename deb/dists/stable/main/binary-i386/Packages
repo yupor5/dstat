@@ -1,0 +1,22 @@
+Package: dstat-go
+Version: 1.0.1-1
+Architecture: i386
+Bugs: https://github.com/yupor5/dstat/issues
+Maintainer: yupor5 <yupor5@users.noreply.github.com>
+Installed-Size: 2179
+Filename: pool/dstat-go_1.0.1-1_i386.deb
+Size: 1009726
+MD5sum: b9ff23924af15ac452e1b4307f2196c9
+SHA1: 62cdf6e56cfcaacc50ca23d9bfea929e00e68a03
+SHA256: 89101a238b297412a994bb79bbaa6ab32693b65a2b58a945ef80efc11528e923
+Section: utils
+Priority: optional
+Homepage: https://github.com/yupor5/dstat
+Description: dstat-go is a from-scratch Go implementation of dstat 0.8.0.
+ Command-line options, column order, headers, units, colours and CSV output
+ follow upstream dstat; data comes from /proc and /sys.  The binary is static
+ and has no Python or plugin runtime dependency.
+ .
+ It installs as /usr/bin/dstat-go and is safe to install alongside the
+ dstat package shipped by the distribution.
+

@@ -1,0 +1,9 @@
+# Place this file in /etc/yum.repos.d/dstat-go.repo
+# The repository is not GPG signed: gpgcheck is disabled on purpose.
+[dstat-go]
+name=dstat-go - Go implementation of dstat
+baseurl=https://yupor5.github.io/dstat/rpm/
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+sslverify=1
