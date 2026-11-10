@@ -638,6 +638,11 @@ func (e *engine) perform(update int) {
 	} else {
 		e.elapsed = float64(e.step)
 	}
+	// 防御：某些环境（如 WSL1）的 /proc/uptime 恒为 0，首轮 elapsed 为 0 会让
+	// 所有速率类插件产生 0/0=NaN。上游此时直接抛异常，这里按 1 秒处理。
+	if e.elapsed <= 0 {
+		e.elapsed = 1
+	}
 
 	if stdoutTTY {
 		oldcols := e.cols

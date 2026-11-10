@@ -327,6 +327,10 @@ func (p *Plugin) ShowCsvEnd(totlist, vislist []*Plugin) string {
 }
 
 func printCsv(v float64) string {
+	// 与 cprint 一致：NaN/±Inf 按 0 写出，避免 int64 转换得到 -9223372036854775808
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		v = 0
+	}
 	if v != pyRound(v) {
 		return fmt.Sprintf("%.3f", v)
 	}

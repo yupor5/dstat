@@ -217,6 +217,11 @@ func tchg(v float64, width int) string {
 
 // cprint 数值格式化，对应上游 cprint()
 func (r *renderer) cprint(v float64, ctype string, width int, scale float64) string {
+	// 防御：数据源缺失时（例如没有 /proc/vmstat、/proc/uptime 为 0）插件可能算出
+	// NaN/±Inf，上游会直接抛异常。这里按 0 渲染，保证不崩且输出可读。
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		v = 0
+	}
 	base := 1000.0
 	if scale == 1024 {
 		base = 1024
@@ -298,6 +303,10 @@ func (r *renderer) cprint(v float64, ctype string, width int, scale float64) str
 
 	if unit {
 		if c != -1 && pyRound(v) != 0 {
+			// 防御：dchg/fchg 超过最大单位时返回 c==len(units)，上游此处会 IndexError
+			if c >= len(units) {
+				c = len(units) - 1
+			}
 			ret += cunit + units[c]
 		} else {
 			ret += chSpace

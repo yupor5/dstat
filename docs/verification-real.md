@@ -459,12 +459,44 @@ $ dpkg-query -W -f='${Package} ${Version}\n' dstat-go   -> dstat-go 1.0.1-1
 ```
 
 
-### 11.4 环境性限制（WSL1）
+### 11.4 WSL1 缺数据源崩溃：复现与修复
 
-WSL1（内核 4.4.0-19041-Microsoft）没有 `/proc/diskstats`，默认插件集 `-cdngy` 里的磁盘模块
-加载失败，随后在渲染阶段 `format.go:301` 发生 `index out of range` 崩溃；显式选择可用插件
-（如 `-c -m -l`）则正常出数据。真机（麒麟 4.19 aarch64）不受影响。该差异属于 WSL1 的
-`/proc` 覆盖不全，已记录为待修的健壮性问题。
+WSL1（内核 4.4.0-19041-Microsoft）的 `/proc` 覆盖不全：没有 `/proc/diskstats`、`/proc/vmstat`，
+`/proc/uptime` 恒为 `0.00 1.00`。修复前默认 `-cdngy` 直接崩溃：
+
+```
+Module dstat_disk24_old failed to load. (No suitable block devices found to monitor)
+Module dstat_net failed to load. (No objects discovered, no stats available)
+panic: runtime error: index out of range [9] with length 9
+main.(*renderer).cprint(...)  dstat/format.go:301
+```
+
+根因三层，修复三处（均不改变正常环境下的输出）：
+
+| 根因 | 修复 |
+|---|---|
+| `/proc/uptime` 为 0，首轮 `elapsed=0`，速率类插件算出 `0/0=NaN` | `perform()` 中 `elapsed<=0` 时按 1 秒处理 |
+| `dchg/fchg` 对 NaN 无限缩放，返回 `c=9`，`units[9]` 越界（上游此处同样 IndexError） | `cprint()` 把 NaN/±Inf 按 0 渲染，并把单位下标夹到 `len(units)-1` |
+| CSV 路径 `int64(NaN)` 输出 `-9223372036854775808` | `printCsv()` 同样把 NaN/±Inf 写为 0 |
+
+插件加载失败的处理与上游一致（上游 `open()` 在文件不可读时抛异常，插件被跳过）：
+`--debug` 下可见完整回退链，例如 `-g`：
+
+```
+Module dstat_page failed to load, trying another. (Cannot open file /proc/vmstat)
+Module dstat_page24
+--paging--
+  in   out
+   0     0
+```
+
+修复后 WSL1 验证（`dstat-go 1 2`、`-g`、`-y`、`-p` 均正常退出，无 panic；`-d`/`-n` 输出
+`None of the stats you selected are available.`，与上游缺数据源一致）；CSV 输出为正常数值。
+
+真机回归（麒麟 aarch64，同机并发跑修复前 `/usr/bin/dstat-go` 与修复后二进制，3 次采样）：
+归一化数值后 6/6 行完全一致（表头、列宽、`|` 位置、单位位置相同），差异仅为并发采样时刻
+造成的数值跳动。
+
 
 ### 11.5 GitHub Pages 仓库
 
