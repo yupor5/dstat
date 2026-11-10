@@ -409,6 +409,16 @@ usr sys idl wai stl| read  writ| recv  send|  in   out | int   csw
 $ ls -l /usr/bin/dstat      -> /usr/libexec/pcp/bin/pcp-dstat（未被覆盖）
 ```
 
+升级路径（同一仓库内同时提供 1.0.0 与 1.0.1）：
+
+```
+$ rpm -q dstat-go           -> dstat-go-1.0.0-1.aarch64
+$ dnf -y upgrade dstat-go
+升级: dstat-go  aarch64  1.0.1-1  dstat-go  975 k
+已升级: dstat-go-1.0.1-1.aarch64
+$ dstat-go 1 2              -> 正常输出
+```
+
 ### 11.3 DEB 仓库（WSL1 Ubuntu 22.04 amd64）
 
 ```
@@ -438,6 +448,16 @@ usr sys idl wai stl| used  free  buff  cach| 1m   5m  15m
 
 结构校验：`dpkg-deb -I` 四个包、`dpkg-deb -c` 文件清单均正常；`dpkg-deb -f` 输出
 `Package/Version/Architecture` 与架构映射一致。
+
+升级路径：
+
+```
+$ dpkg-query -W -f='${Package} ${Version}\n' dstat-go   -> dstat-go 1.0.0-1
+$ sudo apt-get install --only-upgrade -y dstat-go
+Unpacking dstat-go (1.0.1-1) over (1.0.0-1) ...
+$ dpkg-query -W -f='${Package} ${Version}\n' dstat-go   -> dstat-go 1.0.1-1
+```
+
 
 ### 11.4 环境性限制（WSL1）
 
