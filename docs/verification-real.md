@@ -506,3 +506,92 @@ Module dstat_page24
 站点：`https://yupor5.github.io/dstat/`（`/rpm/`、`/deb/`、`dstat-go.repo`、`dstat-go.list`）。
 仓库未签名，客户端分别使用 `gpgcheck=0` 与 `[trusted=yes]`。
 
+### 11.6 GitHub Pages 开启后的 HTTPS 端到端确认（2026-11-10 15:00 CST）
+
+Pages 站点开启后，按「先验 https 可达性 → 再在真机用 https 仓库完整装一遍」的顺序复核。
+
+**(1) HTTPS 可达性与内容一致性**（Windows 侧探测）
+
+| URL | 状态 | 大小 | 内容核对 |
+|---|---|---|---|
+| `https://yupor5.github.io/dstat/` | 200 | 2722 | 仓库说明页正常渲染 |
+| `https://yupor5.github.io/dstat/dstat-go.repo` | 200 | 268 | 与仓库内 `packaging/repo/dstat-go.repo` **逐字一致** |
+| `https://yupor5.github.io/dstat/rpm/repodata/repomd.xml` | 200 | 3074 | revision `1794292826`；含 `primary`/`filelists`/`other` 及三个 `_db` |
+| `https://yupor5.github.io/dstat/deb/dists/stable/Release` | 200 | 4234 | `Origin/Label: dstat-go`、`Suite/Codename: stable`、`Architectures: amd64 arm64 i386 armhf`、`Components: main`，含 MD5Sum/SHA256 段 |
+
+`dstat-go.repo` 远端内容：
+
+```ini
+# Place this file in /etc/yum.repos.d/dstat-go.repo
+# The repository is not GPG signed: gpgcheck is disabled on purpose.
+[dstat-go]
+name=dstat-go - Go implementation of dstat
+baseurl=https://yupor5.github.io/dstat/rpm/
+enabled=1
+gpgcheck=0
+repo_gpgcheck=0
+sslverify=1
+```
+
+**(2) 真机改用 https 仓库后完整安装**（麒麟 V10 SP1 aarch64，192.168.0.112）
+
+改动前该机指向临时本地源 `baseurl=http://127.0.0.1:8099/rpm/`，本次改为官方 https 地址。
+
+网络探测：
+
+```bash
+curl -4 -sS -o /dev/null -w "%{http_code}\n" https://yupor5.github.io/dstat/rpm/repodata/repomd.xml   # 200
+curl -6 -sS -o /dev/null -w "%{http_code}\n" https://yupor5.github.io/dstat/rpm/repodata/repomd.xml   # FAILED（本机无可用 IPv6 出口）
+```
+
+IPv6 直接失败而非挂起，`dnf` 会立即回落 IPv4，因此 **未在 repo 文件中加 `ip_resolve=4`**（该参数仅在 IPv6 解析挂起时才需要）。若后续在其它机器上遇到挂起，可在 `[dstat-go]` 段追加 `ip_resolve=4`。
+
+执行序列与结果：
+
+```bash
+dnf clean all          # 16 文件已删除
+dnf makecache          # dstat-go 仓库元数据下载成功；real 0m35.789s；makecache_exit=0
+dnf -y remove dstat-go # 已移除 dstat-go-1.0.1-1.aarch64；remove_exit=0
+dnf -y install dstat-go
+#   安装: dstat-go aarch64 1.0.1-1  dstat-go 仓库  975 k
+#   下载: dstat-go-1.0.1-1.aarch64.rpm  13 kB/s | 975 kB  01:13
+#   已安装: dstat-go-1.0.1-1.aarch64；install_exit=0
+```
+
+安装结果核对：
+
+```bash
+$ rpm -q dstat-go
+dstat-go-1.0.1-1.aarch64
+$ rpm -ql dstat-go
+/usr/bin/dstat-go
+/usr/share/doc/dstat-go/LICENSE
+/usr/share/doc/dstat-go/README.md
+/usr/share/doc/dstat-go/README.zh-CN.md
+/usr/share/doc/dstat-go/docs/dstat-spec.md
+/usr/share/doc/dstat-go/docs/verification-real.md
+/usr/share/man/man1/dstat-go.1
+$ ls -l /usr/bin/dstat
+lrwxrwxrwx ... /usr/bin/dstat -> /usr/libexec/pcp/bin/pcp-dstat   # 系统自带文件未被覆盖
+```
+
+运行出数据：
+
+```bash
+$ dstat-go 1 2
+You did not select any stats, using -cdngy by default.
+--total-cpu-usage-- -dsk/total- -net/total- ---paging-- ---system--
+usr sys idl wai stl| read  writ| recv  send|  in   out | int   csw
+ 24   2  74   0   0|  22M 4058k|   0     0 |  96B 2583B|  49k  132k
+ 23   1  76   0   0|8192B  608k| 110k  119k|   0     0 |  65k  123k
+run_exit=0
+```
+
+**(3) 结论**
+
+- 4 个 HTTPS 端点均返回 200，内容与推送一致（repo 文件逐字一致、repomd/Release 元数据完整）。
+- 麒麟 aarch64 上用 https 官方源完成 `clean all → makecache → remove → install` 全流程，包来自 `dstat-go` 仓库（975 k），安装后 `dstat-go 1 2` 正常输出 5 组数据。
+- `/usr/bin/dstat`（pcp 包装脚本）保持原样，未发生覆盖。
+- 已知现象：经 GitHub Pages 下载 RPM 速率约 13 kB/s（975 kB 耗时 1 分 13 秒），属 CDN/链路因素，不影响正确性；元数据缓存阶段约 36 秒。
+- 本次为验证性改动，**未打新 tag、未触发 Release**。
+
